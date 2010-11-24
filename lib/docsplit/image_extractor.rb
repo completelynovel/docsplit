@@ -29,7 +29,7 @@ module Docsplit
     # suggested by the GraphicsMagick list, that seems to work quite well.
     def convert(pdf, size, format, previous=nil)
       tempdir   = Dir.mktmpdir
-      basename  = @out_basename || File.basename(pdf, File.extname(pdf))
+      basename  = @out_file_name || File.basename(pdf, File.extname(pdf))
       directory = directory_for(size)
       pages     = @pages || '1-' + Docsplit.extract_length(pdf).to_s
       FileUtils.mkdir_p(directory) unless File.exists?(directory)
@@ -40,7 +40,8 @@ module Docsplit
         raise ExtractionFailed, result if $? != 0
       else
         page_list(pages).each do |page|
-          out_file  = File.join(directory, "#{basename}_#{page}.#{format}")
+          file_name = "#{basename}.#{format}" % page
+          out_file  = File.join(directory, file_name )
           cmd = "MAGICK_TMPDIR=#{tempdir} OMP_NUM_THREADS=2 gm convert +adjoin #{common} \"#{pdf}[#{page - 1}]\" \"#{out_file}\" 2>&1".chomp
           result = `#{cmd}`.chomp
           raise ExtractionFailed, result if $? != 0
@@ -58,22 +59,39 @@ module Docsplit
       @output  = options[:output]  || '.'
       @pages   = options[:pages]
       @formats = [options[:format] || DEFAULT_FORMAT].flatten
-      @sizes   = [options[:size]].flatten.compact
-      @sizes   = [nil] if @sizes.empty?
+      @sizes   = standardize_sizes(options[:size])
       @rolling = !!options[:rolling]
-      @out_basename = options[:out_basename]
+      @out_file_name = options[:out_file_name] # pass in a file name where %s will get replaced with the page number
+      @out_dir_name  = options[:out_dir_name]  # pass in a directory name where %s will get replaced by the size
     end
 
     # If there's only one size requested, generate the images directly into
     # the output directory. Multiple sizes each get a directory of their own.
     def directory_for(size)
-      path = @sizes.length == 1 ? @output : File.join(@output, size)
+      file_name = @out_dir_name.present? ? @out_dir_name % size.name : size.name
+      path = @sizes.length == 1 ? @output : File.join(@output, file_name ) 
       File.expand_path(path)
     end
 
     # Generate the resize argument.
     def resize_arg(size)
-      size.nil? ? '' : "-resize #{size}"
+      return '' if size.nil?
+      "-resize \"#{size.format}\""
+    end
+    
+    # standardize the size input to an array of ImageMagickSize objects
+    def standardize_sizes(sizes)
+      if sizes.is_a?(Array)
+        out = []
+        [sizes].flatten.compact.each do |size|
+          out << ImageMagickSize.new(size)
+        end
+      elsif sizes.is_a?(String)
+        out = [ImageMagickSize.new(size)]
+      else
+        out = [nil] 
+      end
+      out
     end
 
     # Generate the appropriate quality argument for the image format.
@@ -99,4 +117,27 @@ module Docsplit
 
   end
 
+
+  class ImageMagickSize
+  
+    attr_accessor :width, :height, :name
+    
+    def initialize(thing)
+      
+      if thing.is_a?(Hash)
+        thing.symbolize_keys
+        @width = thing[:width].to_s
+        @height = thing[:height].to_s
+        @name = thing[:name].present? ? thing[:name].to_s : @width
+      elsif thing.is_a?(String)
+        @name = thing
+        @width = thing.split("x")[0]
+        @height = thing.split("x")[1]
+      end
+    end
+    
+    def format
+      [@width, @height].join("x")
+    end
+  end
 end
