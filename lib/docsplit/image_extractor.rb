@@ -29,7 +29,7 @@ module Docsplit
     # suggested by the GraphicsMagick list, that seems to work quite well.
     def convert(pdf, size, format, previous=nil)
       tempdir   = Dir.mktmpdir
-      basename  = File.basename(pdf, File.extname(pdf))
+      basename  = @out_basename || File.basename(pdf, File.extname(pdf))
       directory = directory_for(size)
       pages     = @pages || '1-' + Docsplit.extract_length(pdf).to_s
       FileUtils.mkdir_p(directory) unless File.exists?(directory)
@@ -61,6 +61,7 @@ module Docsplit
       @sizes   = [options[:size]].flatten.compact
       @sizes   = [nil] if @sizes.empty?
       @rolling = !!options[:rolling]
+      @out_basename = options[:out_basename]
     end
 
     # If there's only one size requested, generate the images directly into
