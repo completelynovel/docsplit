@@ -20,3 +20,25 @@
   To suggest a feature or report a bug: 
   http://github.com/documentcloud/docsplit/issues/
 
+
+CompletelyNovel additions.
+
+= extract_images(pdf, options)
+
+out_file_name
+-------------
+options :out_file_name => "new_name"
+
+When extracting images of pages the image name will default to the basename of the source file with the page number ammended 'basename_1.jpg'
+adding option :out_file_name will label all output images by new_name_1.png, new_name_2.png etc
+
+sizes 
+-----
+options :sizes => sizes object
+
+Size can be 
+- a string: "500x"
+- an array of strings: %w{500x 400x 300x}
+- a hash of name, width, height: [ {:name => "big", :width => 200}, {:name => "small", :width => 100} ]
+
+
