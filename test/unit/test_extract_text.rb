@@ -14,6 +14,12 @@ Our nation’s creativity has filled the world’s libraries, museums, recital h
     assert File.read("#{OUTPUT}/obama_arts_1.txt").strip == FULL_TEXT.strip
   end
 
+  def test_paged_extraction_with_different_file_name
+    Docsplit.extract_text('test/fixtures/obama_arts.pdf', :pages => 'all', :output => OUTPUT, :out_file_name => 'arty')
+    assert Dir["#{OUTPUT}/*.txt"].length == 2
+    assert File.read("#{OUTPUT}/arty_1.txt").strip == FULL_TEXT.strip
+  end
+
   def test_page_only_extraction
     Docsplit.extract_text('test/fixtures/obama_arts.pdf', :pages => 2..2, :output => OUTPUT)
     assert Dir["#{OUTPUT}/*.txt"] == ["#{OUTPUT}/obama_arts_2.txt"]

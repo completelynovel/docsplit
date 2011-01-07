@@ -31,6 +31,7 @@ module Docsplit
       FileUtils.mkdir_p @output unless File.exists?(@output)
       [pdfs].flatten.each do |pdf|
         @pdf_name = File.basename(pdf, File.extname(pdf))
+        @out_file_name ||= @pdf_name
         pages = (@pages == 'all') ? 1..Docsplit.extract_length(pdf) : @pages
         if @force_ocr || (!@forbid_ocr && !contains_text?(pdf))
           extract_from_ocr(pdf, pages)
@@ -58,10 +59,10 @@ module Docsplit
     # Extract a page range worth of text from a PDF via OCR.
     def extract_from_ocr(pdf, pages)
       tempdir = Dir.mktmpdir
-      base_path = File.join(@output, @pdf_name)
+      base_path = File.join(@output, @out_file_name)
       if pages
         pages.each do |page|
-          tiff = "#{tempdir}/#{@pdf_name}_#{page}.tif"
+          tiff = "#{tempdir}/#{@out_file_name}_#{page}.tif"
           file = "#{base_path}_#{page}"
           run "MAGICK_TMPDIR=#{tempdir} OMP_NUM_THREADS=2 gm convert +adjoin #{MEMORY_ARGS} #{OCR_FLAGS} #{pdf}[#{page - 1}] #{tiff} 2>&1"
           run "tesseract #{tiff} #{file} 2>&1"
@@ -69,7 +70,7 @@ module Docsplit
           FileUtils.remove_entry_secure tiff
         end
       else
-        tiff = "#{tempdir}/#{@pdf_name}.tif"
+        tiff = "#{tempdir}/#{@out_file_name}.tif"
         run "MAGICK_TMPDIR=#{tempdir} OMP_NUM_THREADS=2 gm convert #{MEMORY_ARGS} #{OCR_FLAGS} #{pdf} #{tiff} 2>&1"
         run "tesseract #{tiff} #{base_path} -l eng 2>&1"
         clean_text(base_path + '.txt') if @clean_ocr
@@ -99,14 +100,14 @@ module Docsplit
 
     # Extract the full contents of a pdf as a single file, directly.
     def extract_full(pdf)
-      text_path = File.join(@output, "#{@pdf_name}.txt")
+      text_path = File.join(@output, "#{@out_file_name}.txt")
       run "pdftotext -enc UTF-8 #{pdf} #{text_path} 2>&1"
     end
 
     # Extract the contents of a single page of text, directly, adding it to
     # the `@pages_to_ocr` list if the text length is inadequate.
     def extract_page(pdf, page)
-      text_path = File.join(@output, "#{@pdf_name}_#{page}.txt")
+      text_path = File.join(@output, "#{@out_file_name}_#{page}.txt")
       run "pdftotext -enc UTF-8 -f #{page} -l #{page} #{pdf} #{text_path} 2>&1"
       unless @forbid_ocr
         @pages_to_ocr.push(page) if File.read(text_path).length < MIN_TEXT_PER_PAGE
@@ -119,6 +120,7 @@ module Docsplit
       @force_ocr  = options[:ocr] == true
       @forbid_ocr = options[:ocr] == false
       @clean_ocr  = !(options[:clean] == false)
+      @out_file_name = options[:out_file_name]
     end
 
   end

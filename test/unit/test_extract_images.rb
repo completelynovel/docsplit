@@ -6,6 +6,11 @@ class ExtractImagesTest < Test::Unit::TestCase
     Docsplit.extract_images('test/fixtures/obama_arts.pdf', :format => :gif, :size => "250x", :output => OUTPUT)
     assert Dir["#{OUTPUT}/*"] == ['test/output/obama_arts_1.gif', 'test/output/obama_arts_2.gif']
   end
+  
+  def test_image_extraction_with_different_name
+    Docsplit.extract_images('test/fixtures/obama_arts.pdf', :format => :gif, :size => "250x", :output => OUTPUT, :out_file_name => "american_arts")
+    assert Dir["#{OUTPUT}/*"] == ["test/output/american_arts_2.gif", "test/output/american_arts_1.gif"]
+  end
 
   def test_image_formatting
     Docsplit.extract_images('test/fixtures/obama_arts.pdf', :format => [:jpg, :gif], :size => "250x", :output => OUTPUT)

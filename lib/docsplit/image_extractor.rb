@@ -29,7 +29,7 @@ module Docsplit
     # suggested by the GraphicsMagick list, that seems to work quite well.
     def convert(pdf, size, format, previous=nil)
       tempdir   = Dir.mktmpdir
-      basename  = @out_file_name || File.basename(pdf, File.extname(pdf))
+      basename  = @out_file_name.nil? ? File.basename(pdf, File.extname(pdf)) : @out_file_name
       directory = directory_for(size)
       pages     = @pages || '1-' + Docsplit.extract_length(pdf).to_s
       FileUtils.mkdir_p(directory) unless File.exists?(directory)
@@ -40,7 +40,7 @@ module Docsplit
         raise ExtractionFailed, result if $? != 0
       else
         page_list(pages).each do |page|
-          file_name = "#{basename}.#{format}" % page
+          file_name = "#{basename}_#{page}.#{format}"
           out_file  = File.join(directory, file_name )
           cmd = "MAGICK_TMPDIR=#{tempdir} OMP_NUM_THREADS=2 gm convert +adjoin #{common} \"#{pdf}[#{page - 1}]\" \"#{out_file}\" 2>&1".chomp
           result = `#{cmd}`.chomp
@@ -61,15 +61,13 @@ module Docsplit
       @formats = [options[:format] || DEFAULT_FORMAT].flatten
       @sizes   = standardize_sizes(options[:size])
       @rolling = !!options[:rolling]
-      @out_file_name = options[:out_file_name] # pass in a file name where %s will get replaced with the page number
-      @out_dir_name  = options[:out_dir_name]  # pass in a directory name where %s will get replaced by the size
+      @out_file_name = options[:out_file_name] # pass in a file basename
     end
 
     # If there's only one size requested, generate the images directly into
     # the output directory. Multiple sizes each get a directory of their own.
     def directory_for(size)
-      file_name = @out_dir_name.present? ? @out_dir_name % size.name : size.name
-      path = @sizes.length == 1 ? @output : File.join(@output, file_name ) 
+      path = @sizes.length == 1 ? @output : File.join(@output, size.name ) 
       File.expand_path(path)
     end
 
@@ -86,10 +84,8 @@ module Docsplit
         [sizes].flatten.compact.each do |size|
           out << ImageMagickSize.new(size)
         end
-      elsif sizes.is_a?(String)
-        out = [ImageMagickSize.new(size)]
       else
-        out = [nil] 
+        out = [ImageMagickSize.new(sizes)]
       end
       out
     end
